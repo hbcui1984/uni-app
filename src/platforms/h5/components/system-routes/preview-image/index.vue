@@ -33,12 +33,29 @@ export default {
     }
   },
   created () {
-    var index = this.urls.indexOf(this.current)
+    const index = typeof this.current === 'number' ? this.current : this.urls.indexOf(this.current)
     this.index = index < 0 ? 0 : index
+  },
+  mounted () {
+    const MAX_MOVE = 20
+    let x = 0
+    let y = 0
+    this.$el.addEventListener('mousedown', (event) => {
+      this.preventDefault = false
+      x = event.clientX
+      y = event.clientY
+    })
+    this.$el.addEventListener('mouseup', (event) => {
+      if (Math.abs(event.clientX - x) > MAX_MOVE || Math.abs(event.clientY - y) > MAX_MOVE) {
+        this.preventDefault = true
+      }
+    })
   },
   methods: {
     _click () {
-      getApp().$router.back()
+      if (!this.preventDefault) {
+        getApp().$router.back()
+      }
     }
   }
 }

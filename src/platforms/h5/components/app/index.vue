@@ -11,17 +11,16 @@
       v-show="showTabBar"
       v-bind="tabBar" />
     <toast
-      v-bind="showToast"
-      @close="_onModalClose" />
+      v-if="$options.components.Toast"
+      v-bind="showToast"/>
     <action-sheet
+      v-if="$options.components.ActionSheet"
       v-bind="showActionSheet"
       @close="_onActionSheetClose" />
     <modal
+      v-if="$options.components.Modal"
       v-bind="showModal"
       @close="_onModalClose" />
-    <picker
-      v-bind="showPicker"
-      @close="_onPickerClose" />
   </uni-app>
 </template>
 <script>
@@ -35,7 +34,7 @@ import {
 
 import components from './components'
 
-import mixins from './popup/mixins'
+import mixins from 'uni-h5-app-mixins'
 
 export default {
   name: 'App',
@@ -74,7 +73,9 @@ export default {
     hideTabBar (newVal, oldVal) {
       // TODO 不支持 css 变量时
       if (uni.canIUse('css.var')) {
-        const windowBottom = !newVal ? (TABBAR_HEIGHT + 'px') : '0px'
+        const windowBottomValue = !newVal ? (TABBAR_HEIGHT) : 0
+        const envMethod = uni.canIUse('css.env') ? 'env' : (uni.canIUse('css.constant') ? 'constant' : '')
+        const windowBottom = windowBottomValue && envMethod ? `calc(${windowBottomValue}px + ${envMethod}(safe-area-inset-bottom))` : `${windowBottomValue}px`
         document.documentElement.style.setProperty('--window-bottom', windowBottom)
         console.debug(`uni.${windowBottom ? 'showTabBar' : 'hideTabBar'}：--window-bottom=${windowBottom}`)
       }
@@ -105,8 +106,7 @@ export default {
 </script>
 
 <style>
-	@import "~uni-core/view/index.css";
-
+  @import "~uni-core/view/index.css";
 	uni-app {
 		display: block;
 		box-sizing: border-box;

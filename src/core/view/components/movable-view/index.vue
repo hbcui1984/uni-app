@@ -1,17 +1,19 @@
 <template>
   <uni-movable-view v-on="$listeners">
-    <v-uni-resize-sensor @resize="setParent"/>
-    <slot/>
+    <v-uni-resize-sensor @resize="setParent" />
+    <slot />
   </uni-movable-view>
 </template>
 <script>
 import touchtrack from 'uni-mixins/touchtrack'
 import {
-  N,
-  I,
-  O
+  Decline,
+  Friction,
+  STD
 } from './utils'
-
+import {
+  disableScrollBounce
+} from 'uni-shared'
 var requesting = false
 
 function _requestAnimationFrame (e) {
@@ -126,6 +128,10 @@ export default {
     scaleValue: {
       type: [Number, String],
       default: 1
+    },
+    animation: {
+      type: [Boolean, String],
+      default: true
     }
   },
   data () {
@@ -205,10 +211,10 @@ export default {
     this._scale = 1
     this._oldScale = 1
 
-    this._STD = new O(1, 9 * Math.pow(this.dampingNumber, 2) / 40, this.dampingNumber)
-    this._friction = new I(1, this.frictionNumber)
-    this._declineX = new N()
-    this._declineY = new N()
+    this._STD = new STD(1, 9 * Math.pow(this.dampingNumber, 2) / 40, this.dampingNumber)
+    this._friction = new Friction(1, this.frictionNumber)
+    this._declineX = new Decline()
+    this._declineY = new Decline()
     this.__touchInfo = {
       historyX: [0, 0],
       historyY: [0, 0],
@@ -274,6 +280,9 @@ export default {
     __handleTouchStart: function () {
       if (!this._isScaling) {
         if (!this.disabled) {
+          disableScrollBounce({
+            disable: true
+          })
           if (this._FA) {
             this._FA.cancel()
           }
@@ -308,28 +317,16 @@ export default {
           x = event.detail.dx + this.__baseX
           this.__touchInfo.historyX.shift()
           this.__touchInfo.historyX.push(x)
-          if (!this.yMove) {
-            if (!null !== this._checkCanMove) {
-              if (Math.abs(event.detail.dx / event.detail.dy) > 1) {
-                this._checkCanMove = false
-              } else {
-                this._checkCanMove = true
-              }
-            }
+          if (!this.yMove && this._checkCanMove === null) {
+            this._checkCanMove = Math.abs(event.detail.dx / event.detail.dy) < 1
           }
         }
         if (this.yMove) {
           y = event.detail.dy + this.__baseY
           this.__touchInfo.historyY.shift()
           this.__touchInfo.historyY.push(y)
-          if (!this.xMove) {
-            if (!null !== this._checkCanMove) {
-              if (Math.abs(event.detail.dy / event.detail.dx) > 1) {
-                this._checkCanMove = false
-              } else {
-                this._checkCanMove = true
-              }
-            }
+          if (!this.xMove && this._checkCanMove === null) {
+            this._checkCanMove = Math.abs(event.detail.dy / event.detail.dx) < 1
           }
         }
         this.__touchInfo.historyT.shift()
@@ -379,6 +376,9 @@ export default {
     __handleTouchEnd: function () {
       var self = this
       if (!this._isScaling && !this.disabled && this._isTouching) {
+        disableScrollBounce({
+          disable: true
+        })
         this.$el.style.willChange = 'auto'
         this._isTouching = false
         if (!this._checkCanMove && !this._revise('out-of-bounds') && this.inertia) {
@@ -566,6 +566,10 @@ export default {
       var limitXY = this._getLimitXY(x, y)
       x = limitXY.x
       y = limitXY.y
+      if (!this.animation) {
+        this._setTransform(x, y, scale, source, r, o)
+        return
+      }
       this._STD._springX._solution = null
       this._STD._springY._solution = null
       this._STD._springScale._solution = null
@@ -619,6 +623,8 @@ export default {
       scale = +scale.toFixed(3)
       if (o && scale !== this._scale) {
         this.$trigger('scale', {}, {
+          x: x,
+          y: y,
           scale: scale
         })
       }
@@ -640,6 +646,7 @@ uni-movable-view {
   top: 0px;
   left: 0px;
   position: absolute;
+  cursor: grab;
 }
 
 uni-movable-view[hidden] {

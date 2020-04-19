@@ -12,13 +12,17 @@ uni-page-wrapper {
   position: relative;
 }
 
-uni-page-head ~ uni-page-wrapper {
+uni-page-head[uni-page-head-type="default"] ~ uni-page-wrapper {
   height: calc(100% - 44px);
+  height: calc(100% - 44px - constant(safe-area-inset-top));
+  height: calc(100% - 44px - env(safe-area-inset-top));
 }
 
 .uni-app--showtabbar uni-page-wrapper {
   display: block;
   height: calc(100% - 50px);
+  height: calc(100% - 50px - constant(safe-area-inset-bottom));
+  height: calc(100% - 50px - env(safe-area-inset-bottom));
 }
 
 .uni-app--showtabbar uni-page-wrapper::after {
@@ -26,10 +30,14 @@ uni-page-head ~ uni-page-wrapper {
   display: block;
   width: 100%;
   height: 50px;
+  height: calc(50px + constant(safe-area-inset-bottom));
+  height: calc(50px + env(safe-area-inset-bottom));
 }
 
-.uni-app--showtabbar uni-page-head ~ uni-page-wrapper {
+.uni-app--showtabbar uni-page-head[uni-page-head-type="default"] ~ uni-page-wrapper {
   height: calc(100% - 44px - 50px);
+  height: calc(100% - 44px - constant(safe-area-inset-top) - 50px - constant(safe-area-inset-bottom));
+  height: calc(100% - 44px - env(safe-area-inset-top) - 50px - env(safe-area-inset-bottom));
 }
 
 uni-page-body {

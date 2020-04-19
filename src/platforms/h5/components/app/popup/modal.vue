@@ -3,9 +3,7 @@
     <uni-modal
       v-show="visible"
       @touchmove.prevent>
-      <div
-        class="uni-mask"
-        @click="_close('mask')" />
+      <div class="uni-mask"/>
       <div class="uni-modal">
         <div
           v-if="title"
@@ -115,6 +113,7 @@ export default {
 		font-size: 18px;
 		word-wrap:break-word;
 		word-break:break-all;
+		white-space: pre-wrap;
 		overflow : hidden;
 		text-overflow: ellipsis;
 		display: -webkit-box;
@@ -129,6 +128,7 @@ export default {
 		line-height: 1.4;
 		word-wrap: break-word;
 		word-break: break-all;
+		white-space: pre-wrap;
 		color: #999999;
 		max-height: 400px;
 		overflow-y: auto;

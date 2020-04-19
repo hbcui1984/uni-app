@@ -10,24 +10,35 @@
         v-for="(item,index) in list"
         :key="item.pagePath"
         class="uni-tabbar__item"
-        @click="_switchTab(item,index)">
+        @click="_switchTab(item,index)"
+      >
         <div class="uni-tabbar__bd">
           <div
             v-if="item.iconPath"
             :class="{'uni-tabbar__icon__diff':!item.text}"
-            class="uni-tabbar__icon">
-            <img :src="_getRealPath($route.meta.pagePath===item.pagePath?item.selectedIconPath:item.iconPath)">
+            class="uni-tabbar__icon"
+          >
+            <img
+              :src="_getRealPath($route.meta.pagePath===item.pagePath?item.selectedIconPath:item.iconPath)"
+            >
+            <div
+              v-if="item.redDot"
+              :class="{'uni-tabbar__badge':!!item.badge}"
+              class="uni-tabbar__reddot"
+            >{{ item.badge }}</div>
           </div>
           <div
             v-if="item.text"
             :style="{color:$route.meta.pagePath===item.pagePath?selectedColor:color,fontSize:item.iconPath?'10px':'14px'}"
-            class="uni-tabbar__label">
+            class="uni-tabbar__label"
+          >
             {{ item.text }}
+            <div
+              v-if="item.redDot&&!item.iconPath"
+              :class="{'uni-tabbar__badge':!!item.badge}"
+              class="uni-tabbar__reddot"
+            >{{ item.badge }}</div>
           </div>
-          <div
-            v-if="item.redDot"
-            :class="{'uni-tabbar__badge':!!item.badge}"
-            class="uni-tabbar__reddot">{{ item.badge }}</div>
         </div>
       </div>
     </div>
@@ -54,11 +65,17 @@ uni-tabbar .uni-tabbar {
   width: 100%;
   z-index: 998;
   box-sizing: border-box;
+  padding-bottom: 0;
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 uni-tabbar .uni-tabbar ~ .uni-placeholder {
   width: 100%;
   height: 50px;
+  margin-bottom: 0;
+  margin-bottom: constant(safe-area-inset-bottom);
+  margin-bottom: env(safe-area-inset-bottom);
 }
 
 uni-tabbar .uni-tabbar * {
@@ -83,17 +100,18 @@ uni-tabbar .uni-tabbar__bd {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
 }
 
 uni-tabbar .uni-tabbar__icon {
   position: relative;
   display: inline-block;
   margin-top: 5px;
-  width: 27px;
-  height: 27px;
+  width: 24px;
+  height: 24px;
 }
 
-uni-tabbar .uni-tabbar__icon.uni-tabbar__icon__diff{
+uni-tabbar .uni-tabbar__icon.uni-tabbar__icon__diff {
   margin-top: 0px;
   width: 34px;
   height: 34px;
@@ -122,25 +140,25 @@ uni-tabbar .uni-tabbar-border {
 
 uni-tabbar .uni-tabbar__reddot {
   position: absolute;
-  top: 6px;
-  left: 16px;
+  top: 0;
+  right: 0;
   width: 12px;
   height: 12px;
-  display: inline-block;
   border-radius: 50%;
   background-color: #f43530;
   color: #ffffff;
+  transform: translate(40%, -20%);
 }
 
 uni-tabbar .uni-tabbar__badge {
-  top: 4px;
-  border-radius: 18px;
-  min-width: 8px;
   width: auto;
-  height: auto;
-  padding: 0.15em 0.5em;
+  height: 16px;
+  line-height: 16px;
+  border-radius: 16px;
+  min-width: 16px;
+  padding: 0 2px;
   font-size: 12px;
-  line-height: 1.2;
+  text-align: center;
   white-space: nowrap;
 }
 </style>
@@ -214,17 +232,20 @@ export default {
       if (url === __uniRoutes[0].alias) {
         url = '/'
       }
+      const detail = {
+        index,
+        text,
+        pagePath
+      }
       if (this.$route.path !== url) {
         this.__path__ = this.$route.path
         uni.switchTab({
-          url
+          from: 'tabBar',
+          url,
+          detail
         })
       } else {
-        UniServiceJSBridge.emit('onTabItemTap', {
-          index,
-          text,
-          pagePath
-        })
+        UniServiceJSBridge.emit('onTabItemTap', detail)
       }
     }
   }

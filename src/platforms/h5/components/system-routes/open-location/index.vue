@@ -6,7 +6,7 @@
         ref="map"
         :src="src"
         allow="geolocation"
-        sandbox="allow-scripts allow-same-origin allow-forms"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-top-navigation allow-modals allow-popups"
         frameborder="0"
         @load="_load" />
       <!-- 去这里 -->
@@ -20,7 +20,7 @@
 <script>
 import SystemHeader from '../system-header'
 
-const key = 'WXTBZ-6WERU-ECCVS-BZJCK-LW5OJ-SIBOS'
+const key = __uniConfig.qqMapKey
 const referer = 'uniapp'
 const poimarkerSrc = 'https://apis.map.qq.com/tools/poimarker'
 
@@ -33,10 +33,10 @@ export default {
     const {
       latitude,
       longitude,
-      scale,
-      name,
-      address
-    } = this.$route.params
+      scale = 18,
+      name = '',
+      address = ''
+    } = this.$route.query
     return {
       latitude,
       longitude,
@@ -70,7 +70,7 @@ export default {
     },
     _nav () {
       var url =
-					`https://apis.map.qq.com/uri/v1/routeplan?type=drive&to=${encodeURIComponent(this.name)}&tocoord=${this.latitude},${this.longitude}&referer=${referer}`
+          `https://map.qq.com/nav/drive#routes/page?transport=2&epointy=${this.latitude}&epointx=${this.longitude}&eword=${encodeURIComponent(this.name || '目的地')}&referer=${referer}`
       this.$refs.map.src = url
     }
   }

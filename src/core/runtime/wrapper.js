@@ -10,7 +10,7 @@ import {
   isContextApi
 } from '../helpers/promise'
 
-import protocols from 'uni-platform/service/api/protocols'
+import { protocols } from 'uni-platform/runtime/api/protocols'
 
 const CALLBACKS = ['success', 'fail', 'cancel', 'complete']
 
@@ -39,7 +39,7 @@ function processArgs (methodName, fromArgs, argsOption = {}, returnValue = {}, k
         } else if (isPlainObject(keyOption)) { // {name:newName,value:value}可重新指定参数 key:value
           toArgs[keyOption.name ? keyOption.name : key] = keyOption.value
         }
-      } else if (CALLBACKS.includes(key)) {
+      } else if (CALLBACKS.indexOf(key) !== -1) {
         toArgs[key] = processCallback(methodName, fromArgs[key], returnValue)
       } else {
         if (!keepFromArgs) {
@@ -77,7 +77,11 @@ export default function wrapper (methodName, method) {
 
       arg1 = processArgs(methodName, arg1, options.args, options.returnValue)
 
-      const returnValue = __GLOBAL__[options.name || methodName](arg1, arg2)
+      const args = [arg1]
+      if (typeof arg2 !== 'undefined') {
+        args.push(arg2)
+      }
+      const returnValue = __GLOBAL__[options.name || methodName].apply(__GLOBAL__, args)
       if (isSyncApi(methodName)) { // 同步 api
         return processReturnValue(methodName, returnValue, options.returnValue, isContextApi(methodName))
       }

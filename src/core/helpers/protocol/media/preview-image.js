@@ -19,9 +19,14 @@ export const previewImage = {
     }
   },
   current: {
-    type: String,
+    type: [String, Number],
     validator (value, params) {
-      params.type = value ? getRealPath(value) : ''
-    }
+      if (typeof value === 'number') {
+        params.current = value > 0 && value < params.urls.length ? value : 0
+      } else if (typeof value === 'string' && value) {
+        params.current = getRealPath(value)
+      }
+    },
+    default: 0
   }
 }

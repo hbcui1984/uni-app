@@ -1,6 +1,8 @@
 <template>
   <uni-image v-on="$listeners">
-    <div :style="modeStyle" />
+    <div
+      ref="content"
+      :style="modeStyle" />
     <img :src="realImagePath">
     <v-uni-resize-sensor
       v-if="mode === 'widthFix'"
@@ -39,7 +41,7 @@ export default {
       return this.originalWidth && this.originalHeight ? this.originalWidth / this.originalHeight : 0
     },
     realImagePath () {
-      return this.$getRealPath(this.src)
+      return this.src && this.$getRealPath(this.src)
     },
     modeStyle () {
       let size = 'auto'
@@ -56,7 +58,7 @@ export default {
           position = 'center center'
           break
         case 'widthFix':
-          size = '100% 100%;'
+          size = '100% 100%'
           break
         case 'top':
           position = 'center top'
@@ -91,11 +93,12 @@ export default {
           break
       }
 
-      return `background-image: url("${this.$getRealPath(this.src)}"); background-size:${size};background-position:${position};background-repeat:${repeat};`
+      return `background-position:${position};background-size:${size};background-repeat:${repeat};`
     }
   },
   watch: {
     src (newValue, oldValue) {
+      this._setContentImage()
       this._loadImage()
     },
     mode (newValue, oldValue) {
@@ -110,6 +113,10 @@ export default {
   },
   mounted () {
     this.availHeight = this.$el.style.height || ''
+    this._setContentImage()
+    if (!this.realImagePath) {
+      return
+    }
     this._loadImage()
   },
   methods: {
@@ -121,9 +128,17 @@ export default {
     _fixSize () {
       const elWidth = this._getWidth()
       if (elWidth) {
-        this.$el.style.height = elWidth / this.ratio + 'px'
+        let height = elWidth / this.ratio
+        // fix: 解决 Chrome 浏览器上某些情况下导致 1px 缝隙的问题
+        if (typeof navigator && navigator.vendor === 'Google Inc.' && height > 10) {
+          height = Math.round(height / 2) * 2
+        }
+        this.$el.style.height = height + 'px'
         this.sizeFixed = true
       }
+    },
+    _setContentImage () {
+      this.$refs.content.style.backgroundImage = this.src ? `url("${this.realImagePath}")` : 'none'
     },
     _loadImage () {
       const _self = this
@@ -146,7 +161,7 @@ export default {
           errMsg: `GET ${_self.src} 404 (Not Found)`
         })
       }
-      img.src = this.$getRealPath(this.src)
+      img.src = this.realImagePath
     },
     _getWidth () {
       const computedStyle = window.getComputedStyle(this.$el)

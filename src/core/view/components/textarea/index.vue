@@ -1,41 +1,54 @@
 <template>
   <uni-textarea
-    style="height:height+'px'"
+    @change.stop
     v-on="$listeners">
-    <div
-      ref="wrapped"
-      class="uni-textarea-wrapped">
+    <div class="uni-textarea-wrapper">
       <div
         v-show="!(composition||valueSync.length)"
         ref="placeholder"
         :style="placeholderStyle"
         :class="placeholderClass"
-        class="uni-textarea-placeholder">{{ placeholder }}</div>
+        class="uni-textarea-placeholder"
+      >{{ placeholder }}</div>
+      <div
+        ref="line"
+        class="uni-textarea-line">&nbsp;</div>
+      <div class="uni-textarea-compute">
+        <div
+          v-for="(item,index) in valueCompute"
+          :key="index">{{ item.trim() ? item : '.' }}</div>
+        <v-uni-resize-sensor
+          ref="sensor"
+          @resize="_resize" />
+      </div>
       <textarea
         ref="textarea"
         v-model="valueSync"
         :disabled="disabled"
         :maxlength="maxlengthNumber"
-        :placeholder="placeholder"
         :autofocus="autoFocus"
+        :class="{'uni-textarea-textarea-fix-margin': fixMargin}"
+        :style="{'overflow-y': autoHeight? 'hidden':'auto'}"
         class="uni-textarea-textarea"
         @compositionstart="_compositionstart"
         @compositionend="_compositionend"
-        @input.stop
+        @input.stop="_input"
         @focus="_focus"
         @blur="_blur"
         @touchstart.passive="_touchstart"
-        @scroll.passive="_scroll"/>
+      />
     </div>
   </uni-textarea>
 </template>
 <script>
 import {
-  emitter
+  emitter,
+  keyboard
 } from 'uni-mixins'
+const DARK_TEST_STRING = '(prefers-color-scheme: dark)'
 export default {
   name: 'Textarea',
-  mixins: [emitter],
+  mixins: [emitter, keyboard],
   model: {
     prop: 'value',
     event: 'update:value'
@@ -71,7 +84,7 @@ export default {
     },
     placeholderClass: {
       type: String,
-      default: ''
+      default: 'textarea-placeholder'
     },
     placeholderStyle: {
       type: String,
@@ -80,10 +93,6 @@ export default {
     autoHeight: {
       type: [Boolean, String],
       default: false
-    },
-    bindinput: {
-      type: String,
-      default: ''
     },
     cursor: {
       type: [Number, String],
@@ -101,10 +110,13 @@ export default {
   data () {
     return {
       valueSync: String(this.value),
+      valueComposition: '',
       composition: false,
       focusSync: this.focus,
       height: 0,
-      focusChangeSource: ''
+      focusChangeSource: '',
+      // iOS 13 以下版本需要修正边距
+      fixMargin: String(navigator.platform).indexOf('iP') === 0 && String(navigator.vendor).indexOf('Apple') === 0 && window.matchMedia(DARK_TEST_STRING).media !== DARK_TEST_STRING
     }
   },
   computed: {
@@ -123,6 +135,9 @@ export default {
     selectionEndNumber () {
       var selectionEnd = Number(this.selectionEnd)
       return isNaN(selectionEnd) ? -1 : selectionEnd
+    },
+    valueCompute () {
+      return (this.composition ? this.valueComposition : this.valueSync).split('\n')
     }
   },
   watch: {
@@ -130,7 +145,8 @@ export default {
       this.valueSync = String(val)
     },
     valueSync (val) {
-      if (val !== this.value) {
+      if (val !== this._oldValue) {
+        this._oldValue = val
         this.$trigger('input', {}, {
           value: val,
           cursor: this.$refs.textarea.selectionEnd
@@ -165,7 +181,10 @@ export default {
       this._checkSelection()
     },
     height (height) {
-      const lineHeight = getComputedStyle(this.$el).lineHeight.replace('px', '')
+      let lineHeight = parseFloat(getComputedStyle(this.$el).lineHeight)
+      if (isNaN(lineHeight)) {
+        lineHeight = this.$refs.line.offsetHeight
+      }
       var lineCount = Math.round(height / lineHeight)
       this.$trigger('linechange', {}, {
         height,
@@ -184,8 +203,21 @@ export default {
     })
   },
   mounted () {
-    this.$refs.textarea.value = this.valueSync
-    this._computeHeight()
+    this._oldValue = this.$refs.textarea.value = this.valueSync
+    this._resize({
+      height: this.$refs.sensor.$el.offsetHeight
+    })
+
+    let $vm = this
+    while ($vm) {
+      const scopeId = $vm.$options._scopeId
+      if (scopeId) {
+        this.$refs.placeholder.setAttribute(scopeId, '')
+      }
+      $vm = $vm.$parent
+    }
+
+    this.initKeyboard(this.$refs.textarea)
   },
   beforeDestroy () {
     this.$dispatch('Form', 'uni-form-group-update', {
@@ -194,11 +226,6 @@ export default {
     })
   },
   methods: {
-    _computeHeight () {
-      this.$nextTick(() => {
-        this.height = this.$refs.textarea.scrollHeight
-      })
-    },
     _focus: function ($event) {
       this.focusSync = true
       this.$trigger('focus', $event, {
@@ -243,8 +270,13 @@ export default {
     _touchstart () {
       this.focusChangeSource = 'touch'
     },
-    _scroll () {
-      this._computeHeight()
+    _resize ({ height }) {
+      this.height = height
+    },
+    _input ($event) {
+      if (this.composition) {
+        this.valueComposition = $event.target.value
+      }
     },
     _getFormData () {
       return {
@@ -266,63 +298,70 @@ uni-textarea {
   display: block;
   position: relative;
   font-size: 16px;
-  line-height: 1.2;
+  line-height: normal;
 }
-.uni-textarea-wrapped {
+uni-textarea[hidden] {
+  display: none;
+}
+.uni-textarea-wrapper,
+.uni-textarea-placeholder,
+.uni-textarea-line,
+.uni-textarea-compute,
+.uni-textarea-textarea {
+  outline: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  text-decoration: inherit;
+}
+.uni-textarea-wrapper {
+  display: block;
   position: relative;
   width: 100%;
   height: 100%;
-  overflow: hidden;
-  font: inherit;
-  font-size: inherit;
-  font-family: inherit;
-  font-style: inherit;
-  font-weight: inherit;
-  line-height: inherit;
-  letter-spacing: inherit;
-  text-indent: inherit;
-  color: inherit;
 }
 .uni-textarea-placeholder,
+.uni-textarea-line,
+.uni-textarea-compute,
 .uni-textarea-textarea {
-  box-sizing: border-box;
   position: absolute;
   width: 100%;
   height: 100%;
   left: 0;
   top: 0;
+  white-space: pre-wrap;
   word-break: break-all;
-  font: inherit;
-  font-size: inherit;
-  font-family: inherit;
-  font-style: inherit;
-  font-weight: inherit;
-  line-height: inherit;
-  letter-spacing: inherit;
-  text-indent: inherit;
-  color: inherit;
 }
 .uni-textarea-placeholder {
   color: grey;
+  overflow: hidden;
+}
+.uni-textarea-line,
+.uni-textarea-compute {
+  visibility: hidden;
+  height: auto;
+}
+.uni-textarea-line {
+  width: 1em;
 }
 .uni-textarea-textarea {
-  outline: none;
-  border: none;
-  padding: 0;
   resize: none;
-  background-color: transparent;
-	opacity: inherit;
+  background: none;
+  color: inherit;
+  opacity: 1;
+  -webkit-text-fill-color: currentcolor;
+  font: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  text-indent: inherit;
+  text-transform: inherit;
+  text-shadow: inherit;
 }
-.uni-textarea-textarea::-webkit-input-placeholder {
-  color: transparent;
-}
-.uni-textarea-textarea:-moz-placeholder {
-  color: transparent;
-}
-.uni-textarea-textarea::-moz-placeholder {
-  color: transparent;
-}
-.uni-textarea-textarea:-ms-input-placeholder {
-  color: transparent;
+/* 用于解决 iOS textarea 内部默认边距 */
+.uni-textarea-textarea-fix-margin {
+  width: auto;
+  right: 0;
+  margin: 0 -3px;
 }
 </style>

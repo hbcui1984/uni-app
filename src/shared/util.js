@@ -13,6 +13,10 @@ export function isStr (str) {
   return typeof str === 'string'
 }
 
+export function isObject (obj) {
+  return obj !== null && typeof obj === 'object'
+}
+
 export function isPlainObject (obj) {
   return _toString.call(obj) === '[object Object]'
 }
@@ -26,6 +30,25 @@ export function noop () {}
 export function toRawType (val) {
   return _toString.call(val).slice(8, -1)
 }
+
+/**
+ * Create a cached version of a pure function.
+ */
+export function cached (fn) {
+  const cache = Object.create(null)
+  return function cachedFn (str) {
+    const hit = cache[str]
+    return hit || (cache[str] = fn(str))
+  }
+}
+
+/**
+ * Camelize a hyphen-delimited string.
+ */
+const camelizeRE = /-(\w)/g
+export const camelize = cached((str) => {
+  return str.replace(camelizeRE, (_, c) => c ? c.toUpperCase() : '')
+})
 
 export function setProperties (item, props, propsData) {
   props.forEach(function (name) {
@@ -55,4 +78,21 @@ export function updateElementStyle (element, styles) {
   for (let attrName in styles) {
     element.style[attrName] = styles[attrName]
   }
+}
+
+export function guid () {
+  return Math.floor(4294967296 * (1 + Math.random())).toString(16).slice(1)
+}
+
+export function debounce (fn, delay) {
+  let timeout
+  return function () {
+    clearTimeout(timeout)
+    const timerFn = () => fn.apply(this, arguments)
+    timeout = setTimeout(timerFn, delay)
+  }
+}
+
+export function kebabCase (string) {
+  return string.replace(/[A-Z]/g, str => '-' + str.toLowerCase())
 }

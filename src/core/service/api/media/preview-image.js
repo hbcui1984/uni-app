@@ -1,25 +1,27 @@
-export function previewImage ({
-  urls,
-  current
-}, callbackId) {
-  const {
-    invokeCallbackHandler: invoke
-  } = UniServiceJSBridge
+import {
+  onMethod,
+  invokeMethod
+} from '../../platform'
 
-  getApp().$router.push({
-    type: 'navigateTo',
-    path: '/preview-image',
-    params: {
-      urls,
-      current
-    }
-  }, function () {
-    invoke(callbackId, {
-      errMsg: 'previewImage:ok'
-    })
-  }, function () {
-    invoke(callbackId, {
-      errMsg: 'previewImage:fail'
-    })
-  })
+const longPressActionsCallbackId = 'longPressActionsCallback'
+
+let longPressActions = {}
+
+onMethod(longPressActionsCallbackId, function (res) {
+  const errMsg = res.errMsg || ''
+  if (new RegExp('\\:\\s*fail').test(errMsg)) {
+    longPressActions.fail && longPressActions.fail(res)
+  } else {
+    longPressActions.success && longPressActions.success(res)
+  }
+  longPressActions.complete && longPressActions.complete(res)
+})
+
+export function previewImage (args = {}) {
+  longPressActions = args.longPressActions || {}
+  if (longPressActions.success || longPressActions.fail || longPressActions.complete) {
+    longPressActions.callbackId = longPressActionsCallbackId
+  }
+
+  return invokeMethod('previewImagePlus', args)
 }

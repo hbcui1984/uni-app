@@ -1,0 +1,116 @@
+#### button
+
+按钮。
+
+**属性说明**
+
+|属性名|类型|默认值|说明|生效时机|平台差异说明|
+|:-|:-|:-|:-|:-|:-|
+|size|String|default|按钮的大小|||
+|type|String|default|按钮的样式类型|||
+|plain|Boolean|false|按钮是否镂空，背景色透明|||
+|disabled|Boolean|false|是否禁用|||
+|loading|Boolean|false|名称前是否带 loading 图标||App-nvue 平台，在 ios 上为雪花，Android上为圆圈|
+|form-type|String||用于 ``<form>`` 组件，点击分别会触发 ``<form>`` 组件的 submit/reset 事件|||
+|open-type|String||开放能力|||
+|hover-class|String|button-hover|指定按钮按下去的样式类。当 hover-class="none" 时，没有点击态效果||App-nvue 平台暂不支持|
+|hover-start-time|Number|20|按住后多久出现点击态，单位毫秒|||
+|hover-stay-time|Number|70|手指松开后点击态保留时间，单位毫秒|||
+|app-parameter|String||打开 APP 时，向 APP 传递的参数，open-type=launchApp时有效||微信小程序、QQ小程序|
+|hover-stop-propagation|boolean|false|指定是否阻止本节点的祖先节点出现点击态||微信小程序|
+|lang|string|'en'|指定返回用户信息的语言，zh_CN 简体中文，zh_TW 繁体中文，en 英文。||微信小程序|
+|session-from|string||会话来源，open-type="contact"时有效||微信小程序|
+|send-message-title|string|当前标题|会话内消息卡片标题，open-type="contact"时有效||微信小程序|
+|send-message-path|string|当前分享路径|会话内消息卡片点击跳转小程序路径，open-type="contact"时有效||微信小程序|
+|send-message-img|string|截图|会话内消息卡片图片，open-type="contact"时有效||微信小程序|
+|show-message-card|boolean|false|是否显示会话内消息卡片，设置此参数为 true，用户进入客服会话会在右下角显示"可能要发送的小程序"提示，用户点击后可以快速发送小程序消息，open-type="contact"时有效||微信小程序|
+|@getphonenumber|Handler||获取用户手机号回调|open-type="getPhoneNumber"|微信小程序|
+|@getuserinfo|Handler||用户点击该按钮时，会返回获取到的用户信息，从返回参数的detail中获取到的值同uni.getUserInfo|open-type="getUserInfo"|微信小程序|
+|@error|Handler||当使用开放能力时，发生错误的回调|open-type="launchApp"|微信小程序|
+|@opensetting|Handler||在打开授权设置页并关闭后回调|open-type="openSetting"|微信小程序|
+|@launchapp|Handler||打开 APP 成功的回调|open-type="launchApp"|微信小程序|
+
+- **注1：``button-hover`` 默认为 ``{background-color: rgba(0, 0, 0, 0.1); opacity: 0.7;}``**
+- ```open-type="launchApp"```时需要调起的APP接入微信OpenSDK[详见](https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/launchApp.html)
+ 
+**size 有效值**
+
+|值|说明|
+|:-|:-|
+|default|默认大小|
+|mini|小尺寸|
+
+**type 有效值**
+
+|值|说明|
+|:-|:-|
+|primary|微信小程序为绿色，App、H5、百度小程序、支付宝小程序为蓝色，字节跳动小程序为红色，QQ小程序为浅蓝色|
+|default|白色|
+|warn|红色|
+
+**form-type 有效值**
+
+|值|说明|
+|:-|:-|
+|submit|提交表单|
+|reset|重置表单|
+
+**open-type 有效值**
+
+|值|说明|平台差异说明|
+|:-|:-|:-|
+|feedback|打开“意见反馈”页面，用户可提交反馈内容并上传日志|App、微信小程序、QQ小程序|
+|share|触发用户转发|微信小程序、百度小程序、支付宝小程序、字节跳动小程序、QQ小程序|
+|getUserInfo|获取用户信息，可以从@getuserinfo回调中获取到用户信息，包括头像、昵称等信息|微信小程序、百度小程序、QQ小程序|
+|contact | 打开客服会话，如果用户在会话中点击消息卡片后返回应用，可以从 @contact 回调中获得具体信息 |微信小程序、百度小程序|
+|getPhoneNumber | 获取用户手机号，可以从@getphonenumber回调中获取到用户信息|微信小程序、百度小程序、字节跳动小程序、支付宝小程序 |
+|launchApp | 打开APP，可以通过app-parameter属性设定向APP传的参数|[微信小程序](https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/launchApp.html)、[QQ小程序](https://q.qq.com/wiki/develop/miniprogram/frame/open_ability/open_app.html)|
+|openSetting | 打开授权设置页 |微信小程序、百度小程序|
+|getAuthorize | 支持小程序授权 | 支付宝小程序 |
+|contactShare | 分享到通讯录好友 | 支付宝小程序 |
+|lifestyle | 关注生活号 | 支付宝小程序 |
+|openGroupProfile|呼起QQ群资料卡页面，可以通过group-id属性设定需要打开的群资料卡的群号，同时manifest中必须配置groupIdList|QQ小程序基础库1.4.7版本+|
+
+**注意** 
+- 在小程序中，开发者可以登录 [微信小程序管理后台](https://mp.weixin.qq.com/) 、[QQ小程序后台](https://q.qq.com/#/)后，进入菜单“客服反馈”页面获取反馈内容。
+- 在 App 中，开发者登录 [DCloud开发者中心](https://dev.dcloud.net.cn/) 后点击应用名称，进入左侧菜单“用户反馈”页面获取反馈内容。
+- 点击 share 分享按钮时会触发 [onShareAppMessage](/api/plugins/share)
+- 支付宝小程序平台，获取用户手机号时，建议先通过条件编译的方式，调用支付宝原生API，[参考](https://docs.alipay.com/mini/api/getphonenumber)
+
+
+**示例** [查看演示](https://uniapp.dcloud.io/h5/pages/component/button/button)
+
+```html
+<template>
+	<view>
+		<view class="uni-padding-wrap uni-common-mt">
+			<button type="primary">页面主操作 Normal</button>
+			<button type="primary" loading="true">页面主操作 Loading</button>
+			<button type="primary" disabled="true">页面主操作 Disabled</button>
+			<button type="default">页面次要操作 Normal</button>
+			<button type="default" disabled="true">页面次要操作 Disabled</button>
+			<button type="warn">警告类操作 Normal</button>
+			<button type="warn" disabled="true">警告类操作 Disabled</button>
+			<view class="button-sp-area">
+				<button type="primary" plain="true">按钮</button>
+				<button type="primary" disabled="true" plain="true">不可点击的按钮</button>
+				<button type="default" plain="true">按钮</button>
+				<button type="default" disabled="true" plain="true">按钮</button>
+				<button class="mini-btn" type="primary" size="mini">按钮</button>
+				<button class="mini-btn" type="default" size="mini">按钮</button>
+				<button class="mini-btn" type="warn" size="mini">按钮</button>
+			</view>
+		</view>
+	</view>
+</template>
+```
+
+**注意**
+
+事件务必使用vue语法，比如下面的获取手机号示例
+
+```
+<button type="default" open-type="getPhoneNumber" @getphonenumber="decryptPhoneNumber">获取手机号</button>
+```
+
+![uniapp](https://img-cdn-qiniu.dcloud.net.cn/uniapp/doc/img/button.png?t=201857)

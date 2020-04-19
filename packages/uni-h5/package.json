@@ -1,11 +1,22 @@
 {
-	"name": "@dcloudio/uni-h5",
-	"version": "0.2.3",
-	"description": "uni-app h5",
-	"main": "dist/index.umd.min.js",
-	"scripts": {
-		"test": "echo \"Error: no test specified\" && exit 1"
-	},
-	"author": "fxy060608",
-	"license": "Apache-2.0"
+  "name": "@dcloudio/uni-h5",
+  "version": "2.0.0-26920200403001",
+  "description": "uni-app h5",
+  "main": "dist/index.umd.min.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dcloudio/uni-app.git",
+    "directory": "packages/uni-h5"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "fxy060608",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "base64-arraybuffer": "^0.2.0",
+    "intersection-observer": "^0.7.0",
+    "safe-area-insets": "^1.4.1"
+  },
+  "gitHead": "84e9cb1ca1898054d161f1514efadd1ab24fd804"
 }

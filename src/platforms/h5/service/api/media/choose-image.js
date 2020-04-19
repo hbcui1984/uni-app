@@ -15,9 +15,10 @@ const _createInput = function (options) {
     'visibility': 'hidden',
     'z-index': -999,
     'width': 0,
-    'height': 0
+    'height': 0,
+    'top': 0,
+    'left': 0
   })
-  // inputEl.style = 'position: absolute;visibility: hidden;z-index: -999;width: 0;height: 0;'
   inputEl.accept = 'image/*'
   if (options.count > 1) {
     inputEl.multiple = 'multiple'
@@ -59,7 +60,8 @@ export function chooseImage ({
       tempFilePaths.push(filePath)
       tempFiles.push({
         path: filePath,
-        size: file.size
+        size: file.size,
+        name: file.name
       })
     }
 

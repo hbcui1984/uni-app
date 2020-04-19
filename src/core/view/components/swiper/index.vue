@@ -2,6 +2,24 @@
 <script>
 import touchtrack from 'uni-mixins/touchtrack'
 
+function deepClone (vnodes, createElement) {
+  function cloneVNode (vnode) {
+    var clonedChildren = vnode.children && vnode.children.map(cloneVNode)
+    var cloned = createElement(vnode.tag, vnode.data, clonedChildren)
+    cloned.text = vnode.text
+    cloned.isComment = vnode.isComment
+    cloned.componentOptions = vnode.componentOptions
+    cloned.elm = vnode.elm
+    cloned.context = vnode.context
+    cloned.ns = vnode.ns
+    cloned.isStatic = vnode.isStatic
+    cloned.key = vnode.key
+    return cloned
+  }
+
+  return vnodes.map(cloneVNode)
+}
+
 export default {
   name: 'Swiper',
   mixins: [touchtrack],
@@ -61,6 +79,10 @@ export default {
     displayMultipleItems: {
       type: [Number, String],
       default: 1
+    },
+    disableTouch: {
+      type: [Boolean, String],
+      default: false
     }
   },
   data () {
@@ -69,8 +91,7 @@ export default {
       currentItemIdSync: this.currentItemId || '',
       userTracking: false,
       currentChangeSource: '',
-      items: [],
-      itemIdItemMap: {}
+      items: []
     }
   },
   computed: {
@@ -143,9 +164,6 @@ export default {
     displayMultipleItemsNumber () {
       this._resetLayout()
     }
-    // itemIdItemMap () {
-    //   this._resetLayout()
-    // }
   },
   created () {
     this._invalid = true
@@ -170,16 +188,9 @@ export default {
   },
   beforeDestroy () {
     this._cancelSchedule()
+    cancelAnimationFrame(this._animationFrame)
   },
   methods: {
-    _itemIdUpdated (item, val, oldVal) {
-      if (oldVal) {
-        this.$set(this.itemIdItemMap, oldVal, null)
-      }
-      if (val) {
-        this.$set(this.itemIdItemMap, val, item.$vnode)
-      }
-    },
     _inintAutoplay (enable) {
       if (enable) {
         this._scheduleAutoplay()
@@ -191,7 +202,16 @@ export default {
      * 页面变更检查和同步
      */
     _currentCheck () {
-      var current = this.items.indexOf(this.itemIdItemMap[this.currentItemId])
+      var current = -1
+      if (this.currentItemId) {
+        for (let i = 0, items = this.items; i < items.length; i++) {
+          let componentInstance = items[i].componentInstance
+          if (componentInstance && componentInstance.itemId === this.currentItemId) {
+            current = i
+            break
+          }
+        }
+      }
       if (current < 0) {
         current = Math.round(this.current) || 0
       }
@@ -374,6 +394,23 @@ export default {
         slideFrame.style.transform = transform
       }
       this._viewportPosition = index
+      if (!this._transitionStart) {
+        if (index % 1 === 0) {
+          return
+        }
+        this._transitionStart = index
+      }
+      index -= Math.floor(this._transitionStart)
+      if (index <= -(this.items.length - 1)) {
+        index += this.items.length
+      } else if (index >= this.items.length) {
+        index -= this.items.length
+      }
+      index = this._transitionStart % 1 > 0.5 || this._transitionStart < 0 ? index - 1 : index
+      this.$trigger('transition', {}, {
+        dx: this.vertical ? 0 : index * slideFrame.offsetWidth,
+        dy: this.vertical ? index * slideFrame.offsetHeight : 0
+      })
     },
     _animateFrameFuncProto () {
       if (!this._animating) {
@@ -390,6 +427,7 @@ export default {
         this._updateViewport(toPos)
         this._animating = null
         this._requestedAnimation = false
+        this._transitionStart = null
         var item = this.items[this.currentSync]
         if (item) {
           this._itemReady(item, () => {
@@ -406,7 +444,7 @@ export default {
       var s = acc * time * time / 2
       var l = toPos + s
       this._updateViewport(l)
-      requestAnimationFrame(this._animateFrameFuncProto.bind(this))
+      this._animationFrame = requestAnimationFrame(this._animateFrameFuncProto.bind(this))
     },
     _animateViewport (current, source, n) {
       this._cancelViewportAnimation()
@@ -449,7 +487,7 @@ export default {
       }
       if (!this._requestedAnimation) {
         this._requestedAnimation = true
-        requestAnimationFrame(this._animateFrameFuncProto.bind(this))
+        this._animationFrame = requestAnimationFrame(this._animateFrameFuncProto.bind(this))
       }
     },
     _cancelViewportAnimation () {
@@ -498,10 +536,11 @@ export default {
         }
         self._updateViewport(val)
       }
+      var time = (this._contentTrackT - contentTrackT) || 1
       if (this.vertical) {
-        move(-data.dy / this.$refs.slideFrame.offsetHeight, -data.ddy / (this._contentTrackT - contentTrackT))
+        move(-data.dy / this.$refs.slideFrame.offsetHeight, -data.ddy / time)
       } else {
-        move(-data.dx / this.$refs.slideFrame.offsetWidth, -data.ddx / (this._contentTrackT - contentTrackT))
+        move(-data.dx / this.$refs.slideFrame.offsetWidth, -data.ddx / time)
       }
     },
     _handleTrackEnd (isCancel) {
@@ -521,6 +560,9 @@ export default {
       }
     },
     _handleContentTrack (e) {
+      if (this.disableTouch) {
+        return
+      }
       if (!this._invalid) {
         if (e.detail.state === 'start') {
           this.userTracking = true
@@ -563,7 +605,7 @@ export default {
     var slidesDots = []
     var swiperItems = []
     if (this.$slots.default) {
-      this.$slots.default.forEach(vnode => {
+      deepClone(this.$slots.default, createElement).forEach(vnode => {
         if (vnode.componentOptions && vnode.componentOptions.tag === 'v-uni-swiper-item') {
           swiperItems.push(vnode)
         }
@@ -572,6 +614,11 @@ export default {
     for (let index = 0, length = swiperItems.length; index < length; index++) {
       let currentSync = this.currentSync
       slidesDots.push(createElement('div', {
+        on: {
+          click: () => {
+            this._animateViewport(this.currentSync = index, this.currentChangeSource = 'click', this.circularEnabled ? 1 : 0)
+          }
+        },
         class: {
           'uni-swiper-dot': true,
           'uni-swiper-dot-active': (index < currentSync + this.displayMultipleItemsNumber && index >= currentSync) || (index < currentSync + this.displayMultipleItemsNumber - length)
@@ -601,11 +648,11 @@ export default {
     }
 
     return createElement(
-      'uni-swiper',
-      [createElement('div', {
-        ref: 'slidesWrapper',
-        'class': 'uni-swiper-wrapper',
+      'uni-swiper', {
         on: this.$listeners
+      }, [createElement('div', {
+        ref: 'slidesWrapper',
+        'class': 'uni-swiper-wrapper'
       }, slidesWrapperChild)]
     )
   }

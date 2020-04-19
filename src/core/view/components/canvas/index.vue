@@ -2,19 +2,17 @@
   <uni-canvas
     :canvas-id="canvasId"
     :disable-scroll="disableScroll"
-    v-on="$listeners"
-    @touchmove="_touchmove"
-  >
+    v-on="_listeners">
     <canvas
       ref="canvas"
       width="300"
-      height="150"/>
+      height="150" />
     <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden;">
-      <slot/>
+      <slot />
     </div>
     <v-uni-resize-sensor
       ref="sensor"
-      @resize="_resize"/>
+      @resize="_resize" />
   </uni-canvas>
 </template>
 <script>
@@ -22,10 +20,36 @@ import {
   subscriber
 } from 'uni-mixins'
 
+import {
+  pixelRatio,
+  wrapper
+} from 'uni-helpers/hidpi'
+
 function resolveColor (color) {
   color = color.slice(0)
   color[3] = color[3] / 255
   return 'rgba(' + color.join(',') + ')'
+}
+
+function processTouches (target, touches) {
+  return ([]).map.call(touches, (touch) => {
+    var boundingClientRect = target.getBoundingClientRect()
+    return {
+      identifier: touch.identifier,
+      x: touch.clientX - boundingClientRect.left,
+      y: touch.clientY - boundingClientRect.top
+    }
+  })
+}
+
+var tempCanvas
+function getTempCanvas (width = 0, height = 0) {
+  if (!tempCanvas) {
+    tempCanvas = document.createElement('canvas')
+  }
+  tempCanvas.width = width
+  tempCanvas.height = height
+  return tempCanvas
 }
 
 export default {
@@ -49,6 +73,28 @@ export default {
   computed: {
     id () {
       return this.canvasId
+    },
+    _listeners () {
+      var $listeners = Object.assign({}, this.$listeners)
+      var events = ['touchstart', 'touchmove', 'touchend']
+      events.forEach(event => {
+        var existing = $listeners[event]
+        var eventHandler = []
+        if (existing) {
+          eventHandler.push(($event) => {
+            this.$trigger(event, Object.assign({}, $event, {
+              touches: processTouches($event.currentTarget, $event.touches),
+              changedTouches: processTouches($event.currentTarget, $event
+                .changedTouches)
+            }))
+          })
+        }
+        if (this.disableScroll && event === 'touchmove') {
+          eventHandler.push(this._touchmove)
+        }
+        $listeners[event] = eventHandler
+      })
+      return $listeners
     }
   },
   created () {
@@ -61,6 +107,10 @@ export default {
       height: this.$refs.sensor.$el.offsetHeight
     })
   },
+  beforeDestroy () {
+    const canvas = this.$refs.canvas
+    canvas.height = canvas.width = 0
+  },
   methods: {
     _handleSubscribe ({
       type,
@@ -71,17 +121,19 @@ export default {
         method(data)
       }
     },
-    _resize ({ width, height }) {
+    _resize () {
       var canvas = this.$refs.canvas
-      if (canvas.width !== width || canvas.height !== height) {
-        canvas.width = width
-        canvas.height = height
+      if (canvas.width > 0 && canvas.height > 0) {
+        var context = canvas.getContext('2d')
+        var imageData = context.getImageData(0, 0, canvas.width, canvas.height)
+        wrapper(this.$refs.canvas)
+        context.putImageData(imageData, 0, 0)
+      } else {
+        wrapper(this.$refs.canvas)
       }
     },
     _touchmove (event) {
-      if (this.disableScroll) {
-        event.preventDefault()
-      }
+      event.preventDefault()
     },
     actionsChanged ({
       actions,
@@ -126,6 +178,7 @@ export default {
                 let color = resolveColor(data2[1])
                 LinearGradient.addColorStop(offset, color)
               })
+              color = LinearGradient
             } else if (data[0] === 'radial') {
               let x = data[1][0]
               let y = data[1][1]
@@ -136,12 +189,14 @@ export default {
                 let color = resolveColor(data2[1])
                 LinearGradient.addColorStop(offset, color)
               })
+              color = LinearGradient
             } else if (data[0] === 'pattern') {
-              let loaded = this.checkImageLoaded(data[1], actions.slice(index + 1), callbackId, function (image) {
-                if (image) {
-                  c2d[method1] = c2d.createPattern(image, data[2])
-                }
-              })
+              let loaded = this.checkImageLoaded(data[1], actions.slice(index + 1), callbackId,
+                function (image) {
+                  if (image) {
+                    c2d[method1] = c2d.createPattern(image, data[2])
+                  }
+                })
               if (!loaded) {
                 break
               }
@@ -189,9 +244,11 @@ export default {
             var url = dataArray[0]
             var otherData = dataArray.slice(1)
             self._images = self._images || {}
-            if (!self.checkImageLoaded(url, actions.slice(index + 1), callbackId, function (image) {
+            if (!self.checkImageLoaded(url, actions.slice(index + 1), callbackId, function (
+              image) {
               if (image) {
-                c2d.drawImage.apply(c2d, [image].concat([...otherData.slice(4, 8)], [...otherData.slice(0, 4)]))
+                c2d.drawImage.apply(c2d, [image].concat([...otherData.slice(4, 8)],
+                  [...otherData.slice(0, 4)]))
               }
             })) return 'break'
           }())
@@ -299,9 +356,10 @@ export default {
             sefl._images[src].src = src
           } else {
             // 解决 PLUS-APP（wkwebview）以及 H5 图像跨域问题（H5图像响应头需包含access-control-allow-origin）
-            if (window.plus && src.indexOf('http://') !== 0 && src.indexOf('https://') !== 0) {
+            if (window.plus && src.indexOf('http://') !== 0 && src.indexOf('https://') !==
+              0) {
               loadFile(src)
-            } else if (/^data:[a-z-]+\/[a-z-]+;base64,/.test(src)) {
+            } else if (/^data:.*,.*/.test(src)) {
               sefl._images[src].src = src
             } else {
               loadUrl(src)
@@ -338,23 +396,48 @@ export default {
       }
     },
     getImageData ({
-      x,
-      y,
+      x = 0,
+      y = 0,
       width,
       height,
+      destWidth,
+      destHeight,
+      hidpi = true,
       callbackId
     }) {
       var imgData
       var canvas = this.$refs.canvas
       if (!width) {
-        width = canvas.width
+        width = canvas.offsetWidth - x
       }
       if (!height) {
-        height = canvas.height
+        height = canvas.offsetHeight - y
       }
       try {
-        imgData = canvas.getContext('2d').getImageData(x, y, width, height)
+        if (!hidpi) {
+          if (!destWidth && !destHeight) {
+            destWidth = Math.round(width * pixelRatio)
+            destHeight = Math.round(height * pixelRatio)
+          } else if (!destWidth) {
+            destWidth = Math.round(width / height * destHeight)
+          } else if (!destHeight) {
+            destHeight = Math.round(height / width * destWidth)
+          }
+        } else {
+          destWidth = width
+          destHeight = height
+        }
+        const newCanvas = getTempCanvas(destWidth, destHeight)
+        const context = newCanvas.getContext('2d')
+        context.__hidpi__ = true
+        context.drawImageByCanvas(canvas, x, y, width, height, 0, 0, destWidth, destHeight, false)
+        imgData = context.getImageData(0, 0, destWidth, destHeight)
+        newCanvas.height = newCanvas.width = 0
+        context.__hidpi__ = false
       } catch (error) {
+        if (!callbackId) {
+          return
+        }
         UniViewJSBridge.publishHandler('onCanvasMethodCallback', {
           callbackId,
           data: {
@@ -363,15 +446,24 @@ export default {
         }, this.$page.id)
         return
       }
-      UniViewJSBridge.publishHandler('onCanvasMethodCallback', {
-        callbackId,
-        data: {
-          errMsg: 'canvasGetImageData:ok',
-          data: [...imgData.data],
-          width,
-          height
+      if (!callbackId) {
+        // fix [...]展开TypedArray在低版本手机报错的问题，使用Array.prototype.slice
+        return {
+          data: Array.prototype.slice.call(imgData.data),
+          width: destWidth,
+          height: destHeight
         }
-      }, this.$page.id)
+      } else {
+        UniViewJSBridge.publishHandler('onCanvasMethodCallback', {
+          callbackId,
+          data: {
+            errMsg: 'canvasGetImageData:ok',
+            data: [...imgData.data],
+            width: destWidth,
+            height: destHeight
+          }
+        }, this.$page.id)
+      }
     },
     putImageData ({
       data,
@@ -385,7 +477,11 @@ export default {
         if (!height) {
           height = Math.round(data.length / 4 / width)
         }
-        this.$refs.canvas.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(data), width, height), x, y)
+        const canvas = getTempCanvas(width, height)
+        const context = canvas.getContext('2d')
+        context.putImageData(new ImageData(new Uint8ClampedArray(data), width, height), 0, 0)
+        this.$refs.canvas.getContext('2d').drawImage(canvas, x, y, width, height)
+        canvas.height = canvas.width = 0
       } catch (error) {
         UniViewJSBridge.publishHandler('onCanvasMethodCallback', {
           callbackId,
@@ -401,6 +497,76 @@ export default {
           errMsg: 'canvasPutImageData:ok'
         }
       }, this.$page.id)
+    },
+    getDataUrl ({
+      x = 0,
+      y = 0,
+      width,
+      height,
+      destWidth,
+      destHeight,
+      hidpi = true,
+      fileType,
+      qualit,
+      callbackId
+    }) {
+      let res = this.getImageData({
+        x,
+        y,
+        width,
+        height,
+        destWidth,
+        destHeight,
+        hidpi
+      })
+      if (!res.data || !res.data.length) {
+        UniViewJSBridge.publishHandler('onCanvasMethodCallback', {
+          callbackId,
+          data: {
+            errMsg: 'canvasGetDataUrl:fail'
+          }
+        }, this.$page.id)
+        return
+      }
+      let imgData
+      try {
+        imgData = new ImageData(new Uint8ClampedArray(res.data), res.width, res.height)
+      } catch (error) {
+        UniViewJSBridge.publishHandler('onCanvasMethodCallback', {
+          callbackId,
+          data: {
+            errMsg: 'canvasGetDataUrl:fail'
+          }
+        }, this.$page.id)
+        return
+      }
+      destWidth = res.width
+      destHeight = res.height
+      const canvas = getTempCanvas(destWidth, destHeight)
+      const c2d = canvas.getContext('2d')
+      c2d.putImageData(imgData, 0, 0)
+      let base64 = canvas.toDataURL('image/png')
+      canvas.height = canvas.width = 0
+      const img = new Image()
+      img.onload = () => {
+        const canvas = getTempCanvas(destWidth, destHeight)
+        if (fileType === 'jpeg' || fileType === 'jpg') {
+          fileType = 'jpeg'
+          c2d.fillStyle = '#fff'
+          c2d.fillRect(0, 0, destWidth, destHeight)
+        }
+        c2d.drawImage(img, 0, 0)
+        base64 = canvas.toDataURL(`image/${fileType}`, qualit)
+        canvas.height = canvas.width = 0
+        UniViewJSBridge.publishHandler('onCanvasMethodCallback', {
+          callbackId,
+          data: {
+            errMsg: 'canvasGetDataUrl:ok',
+            base64: base64
+          }
+        }, this.$page.id)
+      }
+      img.src = base64
     }
   }
 }
@@ -412,6 +578,7 @@ uni-canvas {
   display: block;
   position: relative;
 }
+
 uni-canvas > canvas {
   position: absolute;
   top: 0;

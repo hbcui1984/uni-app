@@ -14,7 +14,7 @@ import {
   isCallbackApi
 } from './promise'
 
-import protocol from './protocol/index'
+import protocol from 'uni-api-protocol'
 
 import validateParam from './params'
 
@@ -87,8 +87,8 @@ function createKeepAliveApiCallback (apiName, callback) {
   const callbackId = invokeCallbackId++
   const invokeCallbackName = 'api.' + apiName + '.' + callbackId
 
-  const invokeCallback = function (res) {
-    callback(res)
+  const invokeCallback = function (res, extras) {
+    callback(res, extras)
   }
 
   invokeCallbacks[callbackId] = {
@@ -139,7 +139,6 @@ function createApiCallback (apiName, params = {}, extras = {}) {
     const extra = extras[name]
     if (isFn(extra)) {
       wrapperCallbacks[name] = tryCatchFramework(extra)
-      delete extras[name]
     }
   }
 
@@ -158,6 +157,20 @@ function createApiCallback (apiName, params = {}, extras = {}) {
 
   const invokeCallback = function (res) {
     res.errMsg = res.errMsg || apiName + ':ok'
+
+    // 部分 api 可能返回的 errMsg 的 api 名称部分不一致，格式化为正确的
+    if (res.errMsg.indexOf(':ok') !== -1) {
+      res.errMsg = apiName + ':ok'
+    } else if (res.errMsg.indexOf(':cancel') !== -1) {
+      res.errMsg = apiName + ':cancel'
+    } else if (res.errMsg.indexOf(':fail') !== -1) {
+      let errDetail = ''
+      let spaceIndex = res.errMsg.indexOf(' ')
+      if (spaceIndex > -1) {
+        errDetail = res.errMsg.substr(spaceIndex)
+      }
+      res.errMsg = apiName + ':fail' + errDetail
+    }
 
     const errMsg = res.errMsg
 
@@ -219,27 +232,38 @@ function createInvokeCallback (apiName, params = {}, extras = {}) {
     callbackId
   }
 }
-
-export function invokeCallbackHandler (invokeCallbackId, res) {
+// onNativeEventReceive((event,data)=>{}) 需要两个参数，写死最多两个参数，避免改动太大，影响已有逻辑
+export function invokeCallbackHandler (invokeCallbackId, res, extras) {
   if (typeof invokeCallbackId === 'number') {
     const invokeCallback = invokeCallbacks[invokeCallbackId]
     if (invokeCallback) {
       if (!invokeCallback.keepAlive) {
         delete invokeCallbacks[invokeCallbackId]
       }
-      return invokeCallback.callback(res)
+      return invokeCallback.callback(res, extras)
     }
   }
   return res
 }
 
 export function wrapperUnimplemented (name) {
-  return function (args) {
+  return function todo (args) {
     console.error('API `' + name + '` is not yet implemented')
   }
 }
 
-export function wrapper (name, invokeMethod, extras) {
+function wrapperExtras (name, extras) {
+  const protocolOptions = protocol[name]
+  if (protocolOptions) {
+    isFn(protocolOptions.beforeSuccess) && (extras.beforeSuccess = protocolOptions.beforeSuccess)
+  }
+}
+
+export function wrapper (name, invokeMethod, extras = {}) {
+  if (!isFn(invokeMethod)) {
+    return invokeMethod
+  }
+  wrapperExtras(name, extras)
   return function (...args) {
     if (isSyncApi(name)) {
       if (validateParams(name, args, -1)) {

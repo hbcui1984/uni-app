@@ -47,11 +47,11 @@ export default {
       default: 1
     },
     hoverStartTime: {
-      type: Number,
+      type: [Number, String],
       default: 20
     },
     hoverStayTime: {
-      type: Number,
+      type: [Number, String],
       default: 600
     }
   },
@@ -86,7 +86,7 @@ export default {
           break
         case 'navigateBack':
           uni.navigateBack({
-            url: this.delta
+            delta: this.delta
           })
           break
         default:
@@ -97,18 +97,19 @@ export default {
 }
 </script>
 <style>
-  .navigator-hover {
-    background-color: rgba(0, 0, 0, 0.1);
-    opacity: 0.7;
-  }
-
   uni-navigator {
     height: auto;
     width: auto;
     display: block;
+    cursor: pointer;
   }
 
   uni-navigator[hidden] {
     display: none;
+  }
+
+  .navigator-hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    opacity: 0.7;
   }
 </style>

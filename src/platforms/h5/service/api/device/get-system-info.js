@@ -1,26 +1,27 @@
 import getWindowOffset from 'uni-platform/helpers/get-window-offset'
+import safeAreaInsets from 'safe-area-insets'
 
 const ua = navigator.userAgent
 /**
  * 是否安卓设备
  */
-export const isAndroid = /android/i.test(ua)
+const isAndroid = /android/i.test(ua)
 /**
  * 是否iOS设备
  */
-export const isIOS = /iphone|ipad|ipod/i.test(ua)
+const isIOS = /iphone|ipad|ipod/i.test(ua)
 /**
  * 获取系统信息-同步
  */
 export function getSystemInfoSync () {
-  var windowWidth = window.innerWidth
-  var windowHeight = window.innerHeight
   var screen = window.screen
   var pixelRatio = window.devicePixelRatio
   var screenWidth = screen.width
   var screenHeight = screen.height
+  var windowWidth = Math.min(window.innerWidth, document.documentElement.clientWidth, screenWidth)
+  var windowHeight = window.innerHeight
   var language = navigator.language
-  var statusbarHeight = 0
+  var statusBarHeight = safeAreaInsets.top
   var osname
   var osversion
   var model
@@ -37,12 +38,15 @@ export function getSystemInfoSync () {
     }
   } else if (isAndroid) {
     osname = 'Android'
-    let osversionFind = ua.match(/Android\s([\w.]+);/)
+    // eslint-disable-next-line no-useless-escape
+    let osversionFind = ua.match(/Android[\s/]([\w\.]+)[;\s]/)
     if (osversionFind) {
       osversion = osversionFind[1]
     }
-    let infos = ua.match(/\((.+?)\)/)[1].split(';')
-    const otherInfo = [/^\s?Android/i, /^\s?Linux/i, /^\s?U/i, /^\s?[a-z][a-z]$/i, /^\s?[a-z][a-z]-[a-z][a-z]$/i, /^\s?wv/i]
+    let infoFind = ua.match(/\((.+?)\)/)
+    let infos = infoFind ? infoFind[1].split(';') : ua.split(' ')
+    // eslint-disable-next-line no-useless-escape
+    const otherInfo = [/\bAndroid\b/i, /\bLinux\b/i, /\bU\b/i, /^\s?[a-z][a-z]$/i, /^\s?[a-z][a-z]-[a-z][a-z]$/i, /\bwv\b/i, /\/[\d\.,]+$/, /^\s?[\d\.,]+$/, /\bBrowser\b/i, /\bMobile\b/i]
     for (let i = 0; i < infos.length; i++) {
       const info = infos[i]
       if (info.indexOf('Build') > 0) {
@@ -68,6 +72,14 @@ export function getSystemInfoSync () {
 
   var system = `${osname} ${osversion}`
   var platform = osname.toLocaleLowerCase()
+  var safeArea = {
+    left: safeAreaInsets.left,
+    right: windowWidth - safeAreaInsets.right,
+    top: safeAreaInsets.top,
+    bottom: windowHeight - safeAreaInsets.bottom,
+    width: windowWidth - safeAreaInsets.left - safeAreaInsets.right,
+    height: windowHeight - safeAreaInsets.top - safeAreaInsets.bottom
+  }
 
   const {
     top: windowTop,
@@ -86,10 +98,17 @@ export function getSystemInfoSync () {
     screenWidth,
     screenHeight,
     language,
-    statusbarHeight,
+    statusBarHeight,
     system,
     platform,
-    model
+    model,
+    safeArea,
+    safeAreaInsets: {
+      top: safeAreaInsets.top,
+      right: safeAreaInsets.right,
+      bottom: safeAreaInsets.bottom,
+      left: safeAreaInsets.left
+    }
   }
 }
 /**

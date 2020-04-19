@@ -15,9 +15,10 @@ const _createInput = function (options) {
     'visibility': 'hidden',
     'z-index': -999,
     'width': 0,
-    'height': 0
+    'height': 0,
+    'top': 0,
+    'left': 0
   })
-  // inputEl.style = 'position: absolute;visibility: hidden;z-index: -999;width: 0;height: 0;'
   inputEl.accept = 'video/*'
   // 经过测试，仅能限制只通过相机拍摄，不能限制只允许从相册选择。
   if (options.sourceType.length === 1 && options.sourceType[0] === 'camera') {
@@ -43,12 +44,38 @@ export function chooseVideo ({
     const file = event.target.files[0]
     const filePath = fileToUrl(file)
 
-    invoke(callbackId, {
+    let callbackResult = {
       errMsg: 'chooseVideo:ok',
       tempFilePath: filePath,
-      size: file.size
-    })
+      size: file.size,
+      duration: 0,
+      width: 0,
+      height: 0,
+      name: file.name
+    }
 
+    const video = document.createElement('video')
+    if (video.onloadedmetadata !== undefined) {
+      // 尝试获取视频的宽高信息
+      video.onloadedmetadata = function () {
+        invoke(callbackId, Object.assign({}, callbackResult, {
+          duration: video.duration || 0,
+          width: video.videoWidth || 0,
+          height: video.videoHeight || 0
+        }))
+      }
+      // 部分浏览器（如微信内置浏览器）未播放无法触发loadedmetadata事件
+      setTimeout(() => {
+        invoke(callbackId, Object.assign({}, callbackResult, {
+          duration: 0,
+          width: 0,
+          height: 0
+        }))
+      }, 300)
+      video.src = filePath
+    } else {
+      invoke(callbackId, callbackResult)
+    }
     // TODO 用户取消选择时，触发 fail，目前尚未找到合适的方法。
   })
 
